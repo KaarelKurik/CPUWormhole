@@ -1,0 +1,4 @@
+name = "CpuWormhole"
+uuid = "a306ffa6-8c32-4d43-9524-335a00654d54"
+authors = ["kaarel <sutnucket@mail.com>"]
+version = "0.1.0"
