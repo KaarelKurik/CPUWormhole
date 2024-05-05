@@ -320,8 +320,8 @@ function just_do_some_shit()
     b = SphericalThroat("b",zeros(3), iddy, 2.0, 1.0, 0.5, 0.6, a, skybox_2)
     a.opposite = b
 
-    height = 240
-    width = 240
+    height = 480
+    width = 480
 
     hoz_fov = pi/3
     z = (width/2) * cot(hoz_fov/2)
@@ -330,8 +330,8 @@ function just_do_some_shit()
     camera = Camera(camera_centre, camera_frame, width, height, a)
     camera_mm = camera_metric(camera)
     out = Matrix{RGB{N0f8}}(undef, height, width)
-    niter = 400
-    dt = 0.025
+    niter = 400*2
+    dt = 0.025/2
     omega = 4.
     for x in 1:height
         for y in 1:width
