@@ -53,6 +53,7 @@ function SkyBox(t::SkyBoxTexture)
 end
 
 mutable struct SphericalThroat{T <: Real}
+    name::String
     centre::Vector{T}
     orthotransform::Matrix{T} # should be an orthogonal transform fixing the orientation of the throat
     rim_radius::T
@@ -315,23 +316,33 @@ function just_do_some_shit()
     textures_2 = [load(joinpath(project_root, "skybox2-" * facename * ".png")) for facename in facenames]
     skybox_texture_2 = SkyBoxTexture(textures_2...)
     skybox_2 = SkyBox(skybox_texture_2)
-    a = SphericalThroat(zeros(3), iddy, 2.0, 1.0, 0.5, 0.6, nothing, skybox_1)
-    b = SphericalThroat(zeros(3), iddy, 2.0, 1.0, 0.5, 0.6, a, skybox_2)
+    a = SphericalThroat("a",zeros(3), iddy, 2.0, 1.0, 0.5, 0.6, nothing, skybox_1)
+    b = SphericalThroat("b",zeros(3), iddy, 2.0, 1.0, 0.5, 0.6, a, skybox_2)
     a.opposite = b
 
-    height = 320
-    width = 320
+    height = 240
+    width = 240
 
-    hoz_fov = pi/5
+    hoz_fov = pi/3
     z = (width/2) * cot(hoz_fov/2)
     camera_frame = [[1.,0.,0.] [0.,1.,0.] [0.,0.,z]]
-    camera_centre = zeros(3)
+    camera_centre = [0.,0.,-4.]
     camera = Camera(camera_centre, camera_frame, width, height, a)
+    camera_mm = camera_metric(camera)
     out = Matrix{RGB{N0f8}}(undef, height, width)
+    niter = 400
+    dt = 0.025
+    omega = 4.
     for x in 1:height
         for y in 1:width
-            vec = pixel_to_vector(camera, x, y)
-            out[x,y] = get_vec_color(vec, skybox_1)
+            @show x,y
+            ray = pixel_to_ray(camera, camera_mm, x, y)
+            @show ray.q
+            @show ray.spot.name
+            ray = evolve_ray(ray, dt, niter, omega)
+            @show ray.q
+            @show ray.spot.name
+            out[x,y] = get_ray_color(ray)
         end
     end
     out
