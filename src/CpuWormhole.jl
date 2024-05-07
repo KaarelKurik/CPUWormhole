@@ -155,6 +155,28 @@ function camera_metric(camera::Camera{T}) where {T <: Real}
     inv(throat_inv_metric(camera.spot, camera.spot.opposite, camera.centre))
 end
 
+# ray should be outside the sphere of its spot
+# second return value is whether it's bounded/goes into sphere
+function evolve_ray_straight(r::Ray{T}) where {T <: Real}
+    v = ray_velocity(r)
+    rsq = r.spot.outer_throat_radius^2
+    qsq = dot(r.q, r.q)
+    vsq = dot(v,v)
+    qv = dot(r.q,v)
+    disc = qv^2 - vsq*(qsq-rsq)
+    if disc < 0
+        r, false
+    else
+        λ = (-qv - sqrt(disc))/vsq
+        Ray(r.q+λ*v, r.p, r.spot), (λ > 0)
+    end
+end
+
+# margin > 1 increases size of sphere
+function ray_in_sphere(r::Ray{T}, margin) where {T<:Real}
+    dot(r.q,r.q) <= margin * r.spot.outer_throat_radius^2
+end
+
 function evolve_ray(r::Ray{T}, dt, niter, omega) where {T <: Real}
     spot = r.spot
     ivm = throat_inv_metric(spot, spot.opposite)
@@ -167,6 +189,25 @@ function evolve_ray(r::Ray{T}, dt, niter, omega) where {T <: Real}
     x = deepcopy(q)
     y = deepcopy(p)
     for it in 1:niter
+        let r = Ray(q,p,spot)
+            if !ray_in_sphere(r, 1.005)
+                # does not change the spot, nor p
+                newr, bounded = evolve_ray_straight(r)
+                if !bounded
+                    return newr, true
+                else
+                    q = newr.q
+                    x = newr.q
+                    p = newr.p
+                    y = newr.p
+
+                    ivm = throat_inv_metric(spot, spot.opposite)
+                    jac_q = ForwardDiff.jacobian(ivm, q)
+                    jac_q = reshape(jac_q, (N,N,N))
+                    inv_q = ivm(q)
+                end
+            end
+        end
         # step 1
         for i in 1:N
             p[i] -= (dt/4)*dot(y,(@view jac_q[:,:,i]),y)
@@ -229,7 +270,7 @@ function evolve_ray(r::Ray{T}, dt, niter, omega) where {T <: Real}
             inv_q = ivm(q)
         end
     end
-    Ray(q, p, spot)
+    Ray(q, p, spot), false
 end
 
 # maybe I should rewrite this one to be applicable to multiple points at once?
@@ -330,8 +371,8 @@ function just_do_some_shit()
     camera = Camera(camera_centre, camera_frame, width, height, a)
     camera_mm = camera_metric(camera)
     out = Matrix{RGB{N0f8}}(undef, height, width)
-    niter = 400*2
-    dt = 0.025/2
+    niter = 800
+    dt = 0.002
     omega = 4.
     for x in 1:height
         for y in 1:width
@@ -339,14 +380,72 @@ function just_do_some_shit()
             ray = pixel_to_ray(camera, camera_mm, x, y)
             @show ray.q
             @show ray.spot.name
-            ray = evolve_ray(ray, dt, niter, omega)
+            ray, exited = evolve_ray(ray, dt, niter, omega)
             @show ray.q
             @show ray.spot.name
-            out[x,y] = get_ray_color(ray)
+            @show exited
+            if exited
+                out[x,y] = get_ray_color(ray)
+            else
+                out[x,y] = RGB(1.,0.,0.)
+            end
         end
     end
     out
     # @show a
+end
+
+# TODO: make sure that I consider the case where throat center is nonzero
+# some functions don't do that currently
+function test_rays()
+    iddy = Matrix{Float64}(I, 3, 3)
+    project_root = project_root_dir()
+    # x, nx, y, ny, z, nz
+    # bottom, top, right, left, front, back
+    facenames = ["bottom", "top", "right", "left", "front", "back"]
+    textures_1 = [load(joinpath(project_root, "skybox-" * facename * ".png")) for facename in facenames]
+    skybox_texture_1 = SkyBoxTexture(textures_1...)
+    skybox_1 = SkyBox(skybox_texture_1)
+    textures_2 = [load(joinpath(project_root, "skybox2-" * facename * ".png")) for facename in facenames]
+    skybox_texture_2 = SkyBoxTexture(textures_2...)
+    skybox_2 = SkyBox(skybox_texture_2)
+    a = SphericalThroat("a",zeros(3), iddy, 2.0, 1.0, 0.5, 0.6, nothing, skybox_1)
+    b = SphericalThroat("b",zeros(3), iddy, 2.0, 1.0, 0.5, 0.6, a, skybox_2)
+    a.opposite = b
+
+    height = 480
+    width = 480
+
+    hoz_fov = pi/3
+    z = (width/2) * cot(hoz_fov/2)
+    camera_frame = [[1.,0.,0.] [0.,1.,0.] [0.,0.,z]]
+    camera_centre = [0.,0.,-4.]
+    camera = Camera(camera_centre, camera_frame, width, height, a)
+    camera_mm = camera_metric(camera)
+    out = Matrix{RGB{N0f8}}(undef, height, width)
+    niter = 800
+    dt = 0.002
+    omega = 4.
+
+    # outer_x just skims the sphere
+    outer_x = (a.outer_throat_radius * abs(camera_centre[3]))/sqrt(camera_centre[3]^2 - a.outer_throat_radius^2)
+    @show outer_x
+    d_0 = normalize([outer_x+0.001, 0., -camera_centre[3]])
+    d_1 = normalize([outer_x, 0., -camera_centre[3]])
+    d_2 = normalize([outer_x-0.001, 0., -camera_centre[3]])
+    r0 = Ray(camera_centre, d_0, camera.spot)
+    r1 = Ray(camera_centre, d_1, camera.spot)
+    r2 = Ray(camera_centre, d_2, camera.spot)
+    res0, e0 = evolve_ray(r0, dt, niter, omega)
+    res1, e1 = evolve_ray(r1, dt, niter, omega)
+    res2, e2 = evolve_ray(r2, dt, niter, omega)
+
+    @show d_0
+    @show d_1
+    @show d_2
+    @show res0.spot.name, e0, res0.q, ray_velocity(res0)
+    @show res1.spot.name, e1, res1.q, ray_velocity(res1)
+    @show res2.spot.name, e2, res2.q, ray_velocity(res2)
 end
 
 end # module CpuWormhole
