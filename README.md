@@ -6,7 +6,10 @@ implementing this logic on a GPU, which is a more unfamiliar
 setting to me.
 
 The wormholes drawn here are not based on GR, instead an arbitrarily
-chosen metric interpolation of annular patches of flat space. At time of writing,
+chosen metric interpolation of annular patches of flat space. (More precisely,
+we interpolate the inverse metrics, because we need the inverse metrics at every step of the calculation, but the metrics only at the start and end,
+so interpolating the inverse metrics directly is less expensive.)
+At time of writing,
 they exhibit some exotic properties which may or may not be the result
 of implementation bugs, like deflecting skimming rays outward rather than
 bending them around the hole.
