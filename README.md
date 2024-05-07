@@ -13,5 +13,5 @@ bending them around the hole.
 
 The core raytracing loop is based on https://arxiv.org/abs/1609.02212, which
 gives us a symplectic integrator even though our Hamiltonian does not appear
-to split.
+to split. This has previously been applied to the problem of geodesic integration in https://arxiv.org/pdf/2010.02237.
 The Hamiltonian in this setting is $`H(q,p) = \frac{1}{2} g^{ij}(q) p_i p_j`$.
