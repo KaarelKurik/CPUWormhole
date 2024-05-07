@@ -361,8 +361,8 @@ function just_do_some_shit()
     b = SphericalThroat("b",zeros(3), iddy, 2.0, 1.0, 0.5, 0.6, a, skybox_2)
     a.opposite = b
 
-    height = 480
-    width = 480
+    height = 800
+    width = 800
 
     hoz_fov = pi/3
     z = (width/2) * cot(hoz_fov/2)
