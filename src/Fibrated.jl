@@ -422,15 +422,16 @@ function main_test()
 
     hoz_fov = pi/3
     z = (width/2) * cot(hoz_fov/2)
-    camera_frame = [[1.,0.,0.] [0.,1.,0.] [0.,0.,z]]
-    camera_centre = [0.,0.,-4.]
+    camera_transform = RotX(pi/6) * RotY(-pi/4)
+    camera_frame = camera_transform * [[1.,0.,0.] [0.,1.,0.] [0.,0.,z]]
+    camera_centre = Vector(camera_transform * [0.,0.,-4.])
     camera = Camera(camera_centre, camera_frame, width, height, ambient_1)
 
     out = Matrix{RGB{N0f8}}(undef, height, width)
 
     for x in 1:height
         for y in 1:width
-            niter = 3200
+            niter = 6400
             @show x,y
             ray = pixel_to_ray(camera, x, y)
             # have to uniformize ray pushing for sure

@@ -26,3 +26,5 @@ shapes, like toruses, tetrahedra, or monkeys, and these do not generically have 
 
 Here's an example of a donut-shaped wormhole rendered using this. To my knowledge, it's the first of its kind.
 ![donut shaped wormhole](https://raw.githubusercontent.com/KaarelKurik/CPUWormhole/main/donut_shaped_wormhole_512x512_dt=0.001.png)
+
+![angled wormhole](https://raw.githubusercontent.com/KaarelKurik/CPUWormhole/main/angled_donut_wormhole_512x512_dt=0.001.png)
