@@ -244,7 +244,7 @@ end
 # TODO: remove magic constants
 function construct_torus_throat_pair(a::ToroidalEntry{T}, b::ToroidalEntry{T}) where {T <: Real}
     EXIT_TOL = 0.1
-    DT = 0.01
+    DT = 0.001
     OMEGA = 4.
     t_ab = OrientedThroat(a.ambient, b.ambient, a, b, construct_torus_transition(a, b), smooth_torus_parameter(a), nothing, construct_throat_ray_pusher(EXIT_TOL, DT, OMEGA))
     t_ba = OrientedThroat(b.ambient, a.ambient, b, a, construct_torus_transition(b, a), smooth_torus_parameter(b), t_ab, construct_throat_ray_pusher(EXIT_TOL, DT, OMEGA))
@@ -263,25 +263,28 @@ end
 # assumption: input ray has euclidean space as ambient space
 # maybe I should encode that at type level or something
 # but really the ambient space types are too varied for that to be reasonable
-function construct_euclidean_ray_pusher(entry_tol::T) where {T <: Real}
+function construct_euclidean_ray_pusher(entry_tol::T, skybox_norm::T) where {T <: Real}
     function pusher(r::Ray{T}, niter)
         ambient::Ambient{T} = r.spot
         q = deepcopy(r.q)
         last_i = 0
         ix = 0
         below_tol = false
+        escaped = false
         for i in 1:niter
             last_i = i
             minsdf, ix = findmin(throat->sdf(throat.entry_a, q), ambient.throats)
             below_tol = minsdf < entry_tol
-            if below_tol
+            escaped = norm(q) > skybox_norm
+            if below_tol | escaped
                 break
             else
                 q .+= minsdf .* normalize(r.v)
             end
         end
         new_spot = if below_tol ambient.throats[ix] else ambient end
-        Ray(q, r.v, new_spot), niter - last_i
+        new_iter_count = if escaped 0 else niter - last_i end
+        Ray(q, r.v, new_spot), new_iter_count
     end
     pusher
 end
@@ -403,15 +406,16 @@ function main_test()
 
     # Elsewhere in file, EXIT_TOL must be larger (0.1 currently)
     ENTRY_TOL = 0.05
+    SKYBOX_NORM = 20.
 
-    ambient_1 = Ambient(OrientedThroat{Float64}[], skybox_1, euclidean_inverse_metric, construct_euclidean_ray_pusher(ENTRY_TOL))
-    ambient_2 = Ambient(OrientedThroat{Float64}[], skybox_2, euclidean_inverse_metric, construct_euclidean_ray_pusher(ENTRY_TOL))
+    ambient_1 = Ambient(OrientedThroat{Float64}[], skybox_1, euclidean_inverse_metric, construct_euclidean_ray_pusher(ENTRY_TOL, SKYBOX_NORM))
+    ambient_2 = Ambient(OrientedThroat{Float64}[], skybox_2, euclidean_inverse_metric, construct_euclidean_ray_pusher(ENTRY_TOL, SKYBOX_NORM))
 
     torus_1 = ToroidalEntry(zeros(3), iddy, 1.0, 0.5, 0.25, ambient_1)
     torus_2 = ToroidalEntry(zeros(3), iddy, 1.0, 0.5, 0.25, ambient_2)
 
     # mutates the ambients
-    construct_torus_throat_pair!(torus_1, torus_2)
+    ota, otb = construct_torus_throat_pair!(torus_1, torus_2)
 
     height = 512
     width = 512
@@ -426,16 +430,14 @@ function main_test()
 
     for x in 1:height
         for y in 1:width
-            niter = 400
+            niter = 3200
             @show x,y
             ray = pixel_to_ray(camera, x, y)
-            @show ray.q
             # have to uniformize ray pushing for sure
             while niter > 0
                 ray, niter = push_ray(ray, niter)
-                @show ray.q
             end
-            if norm(ray.q) > 15.
+            if norm(ray.q) > SKYBOX_NORM
                 out[x,y] = get_ray_color(ray)
             else
                 out[x,y] = RGB(1.,0.,0.)
