@@ -441,6 +441,7 @@ function main_test()
             if norm(ray.q) > SKYBOX_NORM
                 out[x,y] = get_ray_color(ray)
             else
+                @show "Red!"
                 out[x,y] = RGB(1.,0.,0.)
             end
         end
