@@ -24,7 +24,8 @@ wormholes can be rendered very efficiently by making use of spherical
 symmetry, but our logic is supposed to be general over wormholes of different
 shapes, like toruses, tetrahedra, or monkeys, and these do not generically have symmetries we could take advantage of.
 
-Here's an example of a donut-shaped wormhole rendered using this. To my knowledge, it's the first of its kind.
+Here's an example of a donut-shaped wormhole rendered using this. ~~To my knowledge, it's the first of its kind.~~
+The earliest example I've seen can be found at https://www.youtube.com/watch?v=EQPWIU9JQAY.
 ![donut shaped wormhole](https://raw.githubusercontent.com/KaarelKurik/CPUWormhole/main/donut_shaped_wormhole_512x512_dt=0.001.png)
 
 ![angled wormhole](https://raw.githubusercontent.com/KaarelKurik/CPUWormhole/main/angled_donut_wormhole_512x512_dt=0.001.png)
